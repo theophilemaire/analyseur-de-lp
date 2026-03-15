@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Brutal Audit Bot</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --black: #0D0D0D;
+    --yellow: #DEAD2C;
+    --white: #F5F5F5;
+    --gray: #1A1A1A;
+    --gray2: #2A2A2A;
+    --gray3: #444;
+    --text-muted: #888;
+  }
+  body { background: var(--black); min-height: 100vh; font-family: sans-serif; color: var(--white); }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* INPUT */
+  #screen-input { padding: 80px 40px 60px; max-width: 680px; margin: 0 auto; }
+  .badge { display: inline-block; border: 1px solid var(--gray3); color: var(--text-muted); font-size: 11px; letter-spacing: 2px; padding: 5px 14px; border-radius: 20px; text-transform: uppercase; margin-bottom: 32px; }
+  h1 { font-family: 'Syne', sans-serif; font-size: 48px; font-weight: 800; line-height: 1.1; margin-bottom: 18px; color: #fff; }
+  h1 span { color: var(--yellow); }
+  .subtitle { color: var(--text-muted); font-size: 17px; line-height: 1.6; margin-bottom: 44px; max-width: 520px; }
+  .input-row { display: flex; border: 1px solid var(--gray3); border-radius: 10px; overflow: hidden; background: var(--gray); margin-bottom: 20px; transition: border-color 0.2s; }
+  .input-row:focus-within { border-color: var(--yellow); }
+  .input-icon { display: flex; align-items: center; padding: 0 16px; color: var(--text-muted); font-size: 18px; }
+  #url-input { flex: 1; background: transparent; border: none; outline: none; color: var(--white); font-size: 16px; padding: 16px 0; font-family: sans-serif; }
+  #url-input::placeholder { color: var(--gray3); }
+  #audit-btn { background: var(--yellow); color: #000; border: none; padding: 16px 28px; font-size: 16px; font-weight: 700; font-family: 'Syne', sans-serif; cursor: pointer; transition: opacity 0.2s; white-space: nowrap; }
+  #audit-btn:hover { opacity: 0.85; }
+  .reassurance { display: flex; gap: 28px; flex-wrap: wrap; margin-bottom: 56px; }
+  .reassurance-item { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; }
+  .dot { width: 6px; height: 6px; background: var(--yellow); border-radius: 50%; flex-shrink: 0; }
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding-top: 40px; border-top: 1px solid var(--gray2); }
+  .feature-card { background: var(--gray); border: 1px solid var(--gray2); border-radius: 12px; padding: 22px; }
+  .feature-icon { font-size: 22px; margin-bottom: 12px; display: block; }
+  .feature-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--white); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .feature-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+  #error-msg { background: #1a0a0a; border: 1px solid #f87171; border-radius: 8px; padding: 14px 18px; color: #f87171; font-size: 14px; margin-top: 10px; display: none; }
+
+  /* LOADING */
+  #screen-loading { padding: 120px 40px; text-align: center; max-width: 480px; margin: 0 auto; }
+  .spinner { width: 52px; height: 52px; border: 3px solid var(--gray2); border-top: 3px solid var(--yellow); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 32px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-title { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 12px; }
+  .loading-sub { color: var(--text-muted); font-size: 15px; line-height: 1.7; }
+  .loading-steps { margin-top: 32px; display: flex; flex-direction: column; gap: 10px; text-align: left; max-width: 300px; margin-left: auto; margin-right: auto; }
+  .loading-step { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text-muted); }
+  .loading-step.done { color: #4ade80; }
+  .loading-step.active { color: var(--yellow); }
+  .step-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gray3); flex-shrink: 0; }
+  .loading-step.done .step-dot { background: #4ade80; }
+  .loading-step.active .step-dot { background: var(--yellow); animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* RESULTS */
+  #screen-results { padding: 48px 40px; max-width: 1200px; margin: 0 auto; }
+  .results-header { display: flex; align-items: center; gap: 24px; padding-bottom: 32px; border-bottom: 1px solid var(--gray2); margin-bottom: 40px; flex-wrap: wrap; }
+  .score-circle { width: 88px; height: 88px; border-radius: 50%; border: 3px solid var(--yellow); display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
+  .score-num { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; color: var(--yellow); line-height: 1; }
+  .score-label { font-size: 10px; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+  .results-meta { flex: 1; }
+  .results-url { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 6px; word-break: break-all; }
+  .results-tagline { color: var(--text-muted); font-size: 14px; }
+  .new-audit-btn { background: transparent; border: 1px solid var(--gray3); color: var(--text-muted); padding: 11px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; font-family: sans-serif; transition: all 0.2s; }
+  .new-audit-btn:hover { border-color: var(--yellow); color: var(--yellow); }
+
+  .summary-card { background: var(--gray); border: 1px solid var(--yellow); border-radius: 12px; padding: 24px 28px; margin-bottom: 40px; }
+  .summary-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--yellow); margin-bottom: 10px; }
+  .summary-text { font-size: 15px; color: var(--white); line-height: 1.7; }
+
+  /* ANNOTATED SCREENSHOT */
+  .annotated-section { margin-bottom: 48px; }
+  .section-heading { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 20px; }
+  .annotated-layout { display: grid; grid-template-columns: 1fr 380px; gap: 32px; align-items: start; }
+  .screenshot-wrapper { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid var(--gray2); }
+  .screenshot-wrapper img { width: 100%; display: block; }
+  .annotation-pin {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--yellow);
+    color: #000;
+    font-size: 12px;
+    font-weight: 800;
+    font-family: 'Syne', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    box-shadow: 0 0 0 3px rgba(222,173,44,0.3);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .annotation-pin:hover { transform: translate(-50%, -50%) scale(1.2); box-shadow: 0 0 0 6px rgba(222,173,44,0.2); }
+  .annotation-pin.bad { background: #f87171; box-shadow: 0 0 0 3px rgba(248,113,113,0.3); }
+  .annotation-pin.mid { background: var(--yellow); }
+  .annotation-pin.good { background: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,0.3); }
+
+  /* ANNOTATION CARDS */
+  .annotations-list { display: flex; flex-direction: column; gap: 12px; }
+  .annotation-card {
+    background: var(--gray);
+    border: 1px solid var(--gray2);
+    border-radius: 10px;
+    padding: 16px 18px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .annotation-card:hover, .annotation-card.active { border-color: var(--yellow); }
+  .annotation-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .card-pin { width: 22px; height: 22px; border-radius: 50%; background: var(--yellow); color: #000; font-size: 11px; font-weight: 800; font-family: 'Syne', sans-serif; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .card-pin.bad { background: #f87171; }
+  .card-pin.good { background: #4ade80; }
+  .card-tag { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); background: var(--gray2); padding: 2px 8px; border-radius: 20px; }
+  .card-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .card-text { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+
+  @media (max-width: 900px) {
+    .annotated-layout { grid-template-columns: 1fr; }
+    h1 { font-size: 32px; }
+    .features { grid-template-columns: 1fr; }
+    #screen-input, #screen-results { padding: 40px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="screen-input" class="screen active">
+  <div class="badge">Audit brutal de landing pages</div>
+  <h1>Ta LP est-elle vraiment <span>efficace</span> ?</h1>
+  <p class="subtitle">Analyse complète avec screenshot annoté. Résultats en 30 secondes. Propulsé par Claude.</p>
+  <div class="input-row">
+    <div class="input-icon">🔗</div>
+    <input id="url-input" type="url" placeholder="https://ta-landing-page.com" autocomplete="off" />
+    <button id="audit-btn">Auditer →</button>
+  </div>
+  <div id="error-msg"></div>
+  <div class="reassurance">
+    <div class="reassurance-item"><div class="dot"></div>Screenshot annoté</div>
+    <div class="reassurance-item"><div class="dot"></div>Résultats en 30 sec</div>
+    <div class="reassurance-item"><div class="dot"></div>Sans filtre</div>
+  </div>
+  <div class="features">
+    <div class="feature-card">
+      <span class="feature-icon">🖼️</span>
+      <div class="feature-title">Screenshot annoté</div>
+      <div class="feature-desc">Ta page affichée avec les points d'amélioration positionnés dessus</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">⚡</span>
+      <div class="feature-title">Audit sans filtre</div>
+      <div class="feature-desc">Retours directs et concrets, pas de politesse inutile</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🎯</span>
+      <div class="feature-title">Actions concrètes</div>
+      <div class="feature-desc">Recommandations priorisées pour maximiser la conversion</div>
+    </div>
+  </div>
+</div>
+
+<div id="screen-loading" class="screen">
+  <div class="spinner"></div>
+  <div class="loading-title">Analyse en cours...</div>
+  <div class="loading-sub">On passe ta page au scanner brutal.</div>
+  <div class="loading-steps">
+    <div class="loading-step active" id="step1"><div class="step-dot"></div>Screenshot de la page...</div>
+    <div class="loading-step" id="step2"><div class="step-dot"></div>Récupération du contenu...</div>
+    <div class="loading-step" id="step3"><div class="step-dot"></div>Analyse CRO par Claude...</div>
+    <div class="loading-step" id="step4"><div class="step-dot"></div>Génération du rapport...</div>
+  </div>
+</div>
+
+<div id="screen-results" class="screen">
+  <div class="results-header">
+    <div class="score-circle">
+      <div class="score-num" id="global-score">—</div>
+      <div class="score-label">/100</div>
+    </div>
+    <div class="results-meta">
+      <div class="results-url" id="results-url"></div>
+      <div class="results-tagline" id="results-tagline"></div>
+    </div>
+    <button class="new-audit-btn" id="new-audit-btn">← Nouvel audit</button>
+  </div>
+
+  <div class="summary-card">
+    <div class="summary-label">Verdict global</div>
+    <div class="summary-text" id="summary-text"></div>
+  </div>
+
+  <div class="annotated-section">
+    <div class="section-heading">Landing page annotée</div>
+    <div class="annotated-layout">
+      <div class="screenshot-wrapper" id="screenshot-wrapper">
+        <img id="screenshot-img" src="" alt="Screenshot" />
+      </div>
+      <div class="annotations-list" id="annotations-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CLAUDE_KEY = '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';
+const SCREENSHOT_KEY = 'ujFENTQclBPwSw';
+
+// Screenshot via allorigins proxy pour éviter CORS depuis fichier local
+function getScreenshotUrl(url) {
+  const params = new URLSearchParams({
+    access_key: SCREENSHOT_KEY,
+    url: url,
+    full_page: 'true',
+    viewport_width: '1280',
+    viewport_height: '900',
+    format: 'jpg',
+    image_quality: '85',
+    block_ads: 'true',
+    block_cookie_banners: 'true',
+    delay: '2'
+  });
+  const direct = 'https://api.screenshotone.com/take?' + params.toString();
+  return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(direct);
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('step' + i);
+    el.className = 'loading-step ' + (i < n ? 'done' : i === n ? 'active' : '');
+  }
+}
+
+function resetAudit() {
+  document.getElementById('url-input').value = '';
+  document.getElementById('error-msg').style.display = 'none';
+  showScreen('screen-input');
+}
+
+function pinClass(score) {
+  if (score >= 70) return 'good';
+  if (score >= 40) return 'mid';
+  return 'bad';
+}
+
+async function startAudit() {
+  const url = document.getElementById('url-input').value.trim();
+  const errorEl = document.getElementById('error-msg');
+  errorEl.style.display = 'none';
+
+  if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+    errorEl.textContent = 'Entre une URL valide commençant par https://';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  showScreen('screen-loading');
+  setStep(1);
+
+  try {
+    // Step 1 — Screenshot URL (chargée en parallèle, affichée après)
+    const screenshotUrl = getScreenshotUrl(url);
+    setStep(2);
+
+    // Step 2 — Jina content
+    const jinaRes = await fetch('https://r.jina.ai/' + url, { headers: { 'Accept': 'text/plain' } });
+    if (!jinaRes.ok) throw new Error('Impossible de récupérer la page');
+    const pageContent = (await jinaRes.text()).slice(0, 10000);
+    setStep(3);
+
+    // Step 3 — Claude analysis with rigorous scoring grid
+    const prompt = `Tu es un auditeur CRO senior avec 10 ans d'expérience. Tu as analysé plus de 500 landing pages. Tu appliques une grille d'évaluation STRICTE et OBJECTIVE. Tu ne donnes JAMAIS de score au hasard — chaque score doit être justifié par un élément CONCRET trouvé dans le contenu fourni.
+
+RÈGLE ABSOLUE : Si un élément n'est pas présent dans le contenu, son score est bas (< 40). Tu ne supposes rien. Tu n'inventes rien. Tu analyses uniquement ce qui est là.
+
+---
+GRILLE D'ÉVALUATION STRICTE :
+
+[1] HERO — Titre principal + sous-titre (positions x:50, y:8)
+• 85-100 : Titre ≤10 mots, bénéfice chiffré ou ultra-spécifique, sous-titre répond à "pourquoi toi et pas un autre", différenciation claire
+• 60-84 : Titre présent et compréhensible mais vague, sans chiffre, ou générique ("Bienvenue", "Découvrez", "Notre solution")
+• 35-59 : Titre long >15 mots, parle de l'entreprise au lieu du client, ou deux idées mélangées
+• 0-34 : Pas de titre clair, slogan incompréhensible, ou aucune accroche identifiable
+
+[2] PROPOSITION DE VALEUR (positions x:30, y:20)
+• 85-100 : Répond clairement à "qu'est-ce que je gagne concrètement", résultat mesurable mentionné, cible identifiée explicitement
+• 60-84 : Bénéfice présent mais flou, pas de chiffre, s'adresse à tout le monde
+• 35-59 : Parle des fonctionnalités mais pas des bénéfices, centré produit et non client
+• 0-34 : Impossible de comprendre ce que propose la page en 5 secondes
+
+[3] CTA PRINCIPAL (positions x:70, y:30)
+• 85-100 : Bouton visible above the fold, texte d'action spécifique ("Obtenir mon audit gratuit" > "Envoyer"), un seul CTA principal clair
+• 60-84 : CTA présent mais texte générique ("Cliquez ici", "En savoir plus", "Soumettre"), ou trop de CTAs qui se concurrencent
+• 35-59 : CTA présent mais peu visible, noyé dans le texte, ou position trop basse
+• 0-34 : Pas de CTA clair identifiable dans le contenu
+
+[4] STRUCTURE UX (positions x:75, y:45)
+• 85-100 : Navigation simple, hiérarchie logique (Hero → Problème → Solution → Preuve → CTA), pas de distractions majeures
+• 60-84 : Structure présente mais éléments perturbateurs (trop de liens, menu chargé, sections dans mauvais ordre)
+• 35-59 : Page dense, peu de blanc, structure illogique
+• 0-34 : Page chaotique, impossible de savoir où aller
+
+[5] PREUVE SOCIALE (positions x:25, y:60)
+• 85-100 : Témoignages avec prénom + résultat chiffré, logos clients identifiables, nombre de clients affiché
+• 60-84 : Témoignages présents mais sans résultat, ou logos sans contexte
+• 35-59 : Mentions vagues ("Ils nous font confiance"), étoiles sans commentaires
+• 0-34 : Aucune preuve sociale identifiable dans le contenu
+
+[6] TRAITEMENT DES OBJECTIONS (positions x:50, y:75)
+• 85-100 : FAQ présente et pertinente, garantie mentionnée (satisfait ou remboursé, essai gratuit), risque zéro communiqué
+• 60-84 : Quelques éléments rassurants mais pas de réponse aux vraies objections (prix, engagement, résultats)
+• 35-59 : Page qui vend sans jamais rassurer, pas de FAQ, pas de garantie
+• 0-34 : Aucun élément de réassurance identifiable
+
+---
+CONTENU DE LA PAGE À ANALYSER :
+${pageContent}
+
+---
+CALCUL DU SCORE GLOBAL : moyenne pondérée = (HERO×0.20) + (PROP_VALEUR×0.20) + (CTA×0.20) + (UX×0.15) + (PREUVE×0.15) + (OBJECTIONS×0.10)
+
+INSTRUCTIONS :
+1. Lis attentivement tout le contenu
+2. Pour chaque annotation, cite un élément TEXTUEL EXACT du contenu pour justifier ton score entre parenthèses
+3. Le summary doit nommer le point le plus fort ET le point le plus faible avec des mots précis tirés de la page
+4. Les positions x et y sont FIXES comme indiqué dans la grille — ne les change pas
+
+Réponds UNIQUEMENT en JSON valide, sans texte avant ou après, sans backticks :
+{
+  "score": <moyenne pondérée arrondie>,
+  "summary": "<point fort précis avec citation + point faible précis + verdict actionnable>",
+  "annotations": [
+    {"id":1,"tag":"HERO","title":"<constat 5 mots max>","text":"<citation exacte du contenu entre guillemets + analyse>","score":<score grille>,"x":50,"y":8},
+    {"id":2,"tag":"PROPOSITION DE VALEUR","title":"<constat>","text":"<citation + analyse>","score":<score>,"x":30,"y":20},
+    {"id":3,"tag":"CTA","title":"<constat>","text":"<citation + analyse>","score":<score>,"x":70,"y":30},
+    {"id":4,"tag":"UX","title":"<constat>","text":"<citation + analyse>","score":<score>,"x":75,"y":45},
+    {"id":5,"tag":"PREUVE SOCIALE","title":"<constat>","text":"<citation + analyse>","score":<score>,"x":25,"y":60},
+    {"id":6,"tag":"OBJECTIONS","title":"<constat>","text":"<citation + analyse>","score":<score>,"x":50,"y":75}
+  ]
+}`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CLAUDE_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1200,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || 'Erreur API Claude');
+    }
+
+    const data = await res.json();
+    const raw = data.content[0].text.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(raw);
+
+    setStep(4);
+
+    // Render
+    document.getElementById('global-score').textContent = result.score;
+    document.getElementById('results-url').textContent = url.replace(/^https?:\/\//, '');
+    document.getElementById('results-tagline').textContent =
+      result.score >= 70 ? 'Bonne base — quelques optimisations à faire' :
+      result.score >= 40 ? 'Problèmes identifiés — corrections urgentes' :
+      'Page sous-optimisée — refonte recommandée';
+    document.getElementById('summary-text').textContent = result.summary;
+
+    // Screenshot
+    const img = document.getElementById('screenshot-img');
+    img.src = screenshotUrl;
+    const wrapper = document.getElementById('screenshot-wrapper');
+
+    // Remove old pins
+    wrapper.querySelectorAll('.annotation-pin').forEach(p => p.remove());
+
+    // Add pins after image loads
+    img.onload = () => {
+      result.annotations.forEach(a => {
+        const pin = document.createElement('div');
+        pin.className = 'annotation-pin ' + pinClass(a.score);
+        pin.textContent = a.id;
+        pin.style.left = a.x + '%';
+        pin.style.top = a.y + '%';
+        pin.addEventListener('click', () => {
+          document.querySelectorAll('.annotation-card').forEach(c => c.classList.remove('active'));
+          document.getElementById('card-' + a.id)?.classList.add('active');
+          document.getElementById('card-' + a.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+        wrapper.appendChild(pin);
+      });
+    };
+
+    // Annotation cards
+    const list = document.getElementById('annotations-list');
+    list.innerHTML = '';
+    result.annotations.forEach(a => {
+      const cls = pinClass(a.score);
+      list.innerHTML += `
+        <div class="annotation-card" id="card-${a.id}">
+          <div class="annotation-card-header">
+            <div class="card-pin ${cls}">${a.id}</div>
+            <span class="card-tag">${a.tag}</span>
+            <span style="margin-left:auto;font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:${cls==='good'?'#4ade80':cls==='bad'?'#f87171':'#DEAD2C'}">${a.score}</span>
+          </div>
+          <div class="card-title">${a.title}</div>
+          <div class="card-text">${a.text}</div>
+        </div>`;
+    });
+
+    showScreen('screen-results');
+
+  } catch(e) {
+    showScreen('screen-input');
+    const errorEl = document.getElementById('error-msg');
+    errorEl.textContent = e.message || 'Une erreur est survenue. Réessaie.';
+    errorEl.style.display = 'block';
+  }
+}
+
+document.getElementById('audit-btn').addEventListener('click', startAudit);
+document.getElementById('new-audit-btn').addEventListener('click', resetAudit);
+document.getElementById('url-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startAudit();
+});
+</script>
+</body>
+</html>
